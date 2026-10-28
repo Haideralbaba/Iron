@@ -1,0 +1,16 @@
+import {useState} from 'react';
+import {Button} from '@/components/ui/button';
+import {Dumbbell,ArrowLeft,Play} from 'lucide-react';
+import {Link,useNavigate} from '@tanstack/react-router';
+import {EXERCISE_BY_ID,type Exercise} from '@/data/exercises';
+import type {PlanDay} from '@/data/program';
+import {useIron} from './store';
+const photos=import.meta.glob<{default:{url:string}}>('/src/assets/exercises/*.asset.json',{eager:true});
+export function Photo({exercise,large=false}:{exercise:Exercise;large?:boolean}){const [failed,setFailed]=useState(false);const photo=photos[`/src/assets/exercises/${exercise.id}.jpg.asset.json`]?.default.url;return <div className={large?'exercise-photo large':'exercise-photo'}>{photo&&!failed?<img src={photo} alt={`${exercise.ar} — وضعية الأداء`} onError={()=>setFailed(true)} loading="lazy"/>:<div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground"><Dumbbell/><span>لا توجد صورة موثقة متاحة</span>{exercise.img&&<a className="text-primary" href={source(exercise)} target="_blank" rel="noreferrer">فتح المصدر</a>}</div>}</div>;}
+export const source=(e:Exercise)=>`https://github.com/yuhonas/free-exercise-db/tree/main/exercises/${e.img}`;
+export function Title({eyebrow,title,description,action}:{eyebrow:string;title:string;description?:string;action?:React.ReactNode}){return <header className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><div className="mb-1 text-xs font-semibold text-primary">{eyebrow}</div><h1 className="text-3xl font-bold leading-relaxed">{title}</h1>{description&&<p className="mt-1 text-sm text-muted-foreground">{description}</p>}</div>{action}</header>;}
+export function Empty({text}:{text:string}){return <div className="py-12 text-center text-muted-foreground"><Dumbbell className="mx-auto mb-3 size-9 text-primary/60"/><p>{text}</p></div>;}
+export function useStart(){const {state,update}=useIron();const navigate=useNavigate();return (day:PlanDay)=>{if(state.active){void navigate({to:'/session'});return;}const items=day.items.filter(x=>!state.excluded.includes(x.exerciseId));if(!items.length)return;update(s=>({...s,active:{id:crypto.randomUUID(),title:day.title,started:Date.now(),finished:null,paused:false,current:0,exercises:items.map(row=>({originalId:row.exerciseId,exerciseId:row.exerciseId,repsMax:row.repsMax,rest:row.rest,sets:Array.from({length:row.sets},()=>({weight:s.loads[row.exerciseId]??0,reps:row.repsMin,rir:null,done:false}))}))}}));void navigate({to:'/session'});};}
+export function ExerciseLink({id}:{id:string}){const e=EXERCISE_BY_ID[id];return e?<Link to="/library/$id" params={{id}} className="flex items-center gap-3"><Photo exercise={e}/><div className="min-w-0 flex-1"><div className="font-medium">{e.ar}</div><div dir="ltr" className="text-start text-xs text-muted-foreground">{e.en}</div></div><ArrowLeft className="size-4 shrink-0 text-muted-foreground"/></Link>:null;}
+export function StartButton({day}:{day:PlanDay}){const start=useStart();const {state}=useIron();return <Button size="lg" className="h-12" onClick={()=>start(day)} disabled={!day.items.length}><Play className="size-4"/>{state.active?'استئناف الجلسة':'ابدأ التمرين'}</Button>;}
+export const dateText=(date:number)=>new Date(date).toLocaleDateString('ar-IQ',{day:'numeric',month:'long'});
